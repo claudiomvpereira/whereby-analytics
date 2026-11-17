@@ -214,7 +214,7 @@ def rooms_table(sessions: pd.DataFrame) -> pd.DataFrame:
 # --------------------------------------------------------------------------- main
 def main(argv=None) -> None:
     ap = argparse.ArgumentParser()
-    ap.add_argument("--since", default="2026-05-17")
+    ap.add_argument("--since", default="2026-08-17")
     ap.add_argument("--raw-db", type=Path, default=RAW_DB)
     ap.add_argument("--mapping-db", type=Path, default=MAPPING_DB)
     ap.add_argument("--out", type=Path, default=PUBLIC_DIR)

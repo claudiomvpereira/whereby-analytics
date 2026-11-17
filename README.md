@@ -41,8 +41,8 @@ pip install -r requirements.txt
 cp .env.example .env    # preencha WHEREBY_API_KEY e PSEUDONYM_SECRET (nunca faça commit do .env)
 export $(grep -v '^#' .env | xargs)
 
-PYTHONPATH=src python -m wa.collect --since 2026-05-17      # coleta (horas; retomável)
-PYTHONPATH=src python -m wa.build_dataset --since 2026-05-17 # gera data/public/
+PYTHONPATH=src python -m wa.collect --since 2026-08-17      # coleta (horas; retomável)
+PYTHONPATH=src python -m wa.build_dataset --since 2026-08-17 # gera data/public/
 PYTHONPATH=src python -m wa.check_privacy                    # verificação de privacidade
 python -m pytest -q tests                                     # testes
 ```
