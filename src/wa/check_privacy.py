@@ -84,7 +84,11 @@ def main(argv=None) -> int:
             if pat.search(value):
                 problems.append((fname, where, f"padrão {label}"))
         norm = normalize_name(value) or ""
+        tokens = set(re.findall(r"\w+", norm))
         for n in names:
+            # pré-filtro barato: todas as palavras do nome precisam existir no texto
+            if not all(w in tokens for w in n.split()):
+                continue
             if re.search(rf"\b{re.escape(n)}\b", norm):
                 problems.append((fname, where, "nome de participante"))
                 break
