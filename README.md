@@ -2,7 +2,7 @@
 
 Projeto acadêmico (disciplina **Big Data em Python**). Ele coleta, anonimiza, trata, analisa e visualiza dados reais de videoconferências obtidos pela API REST do Whereby Embedded.
 
-> **Status:** coleta concluída (17/08/2026 a 17/11/2026: 1.783 sessões e 13.517 participações brutas). Falta gerar os dados públicos finais com o segredo definitivo de pseudonimização.
+> **Status:** coleta e dados públicos concluídos — 1.781 aulas e 13.506 participações anonimizadas (17/08/2026 a 17/11/2026). Notebook executado e dashboard funcionando; falta o relatório final com capturas de tela.
 
 ## Privacidade
 
@@ -39,7 +39,7 @@ O dashboard **não** consulta a API: ele lê apenas `data/public/`.
 
 ```bash
 pip install -r requirements.txt
-cp .env.example .env    # preencha WHEREBY_API_KEY e PSEUDONYM_SECRET (nunca faça commit do .env)
+cp .env.example .env    # preencha WHEREBY_API_KEY e PSEUDONYM_SECRET (64+ caracteres aleatórios; nunca faça commit do .env)
 export $(grep -v '^#' .env | xargs)
 
 PYTHONPATH=src python -m wa.collect --since 2026-08-17      # coleta (horas; retomável)

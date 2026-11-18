@@ -1,0 +1,49 @@
+{
+  "raw": {
+    "sessions": 1783,
+    "participations": 13517
+  },
+  "missing_raw": {
+    "sessions": {
+      "endedAt": 2
+    },
+    "participations": {
+      "userId": 13380,
+      "leftAt": 4,
+      "externalId": 13517,
+      "userAgent": 13517
+    }
+  },
+  "duplicates_removed": {
+    "sessions": 0,
+    "participations": 0
+  },
+  "inconsistencies": {
+    "sessions_without_start": 0,
+    "sessions_ongoing_without_end": 2,
+    "sessions_invalid_duration": 0,
+    "participations_orphan_or_excluded_session": 7,
+    "participations_without_join": 0,
+    "participations_without_left_imputed": 4,
+    "participations_left_before_join": 4
+  },
+  "final": {
+    "sessions": 1781,
+    "participations": 13506,
+    "people": {
+      "teachers": 29,
+      "students": 938,
+      "unidentified_segments": 0
+    },
+    "rooms": 163
+  },
+  "missing_final": {
+    "sessions": {},
+    "participations": {}
+  },
+  "period": {
+    "since": "2026-08-17",
+    "first_date": "2026-08-17",
+    "last_date": "2026-11-17"
+  }
+}

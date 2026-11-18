@@ -27,6 +27,11 @@ LABEL_FORMAT = {
 
 def get_secret() -> bytes:
     secret = os.getenv("PSEUDONYM_SECRET", "")
+    env_file = Path(__file__).resolve().parents[2] / ".env"
+    if len(secret) < 32 and env_file.exists():
+        # .env local (fora do Git) tem prioridade sobre uma variável ausente/curta
+        from dotenv import dotenv_values
+        secret = dotenv_values(env_file).get("PSEUDONYM_SECRET") or ""
     if len(secret) < 32:
         raise SystemExit(
             "PSEUDONYM_SECRET ausente ou curto (mínimo 32 caracteres). "
