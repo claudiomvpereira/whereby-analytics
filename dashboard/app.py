@@ -173,18 +173,43 @@ with tab3:
     fig.update_traces(hovertemplate="%{x} participantes: %{y} aulas<extra></extra>")
     c1.plotly_chart(style(fig), width="stretch")
 
-    freq = pp[pp.role == "student"].groupby("person_id")["session_id"].nunique().rename("aulas").reset_index()
+    freq = pp[pp.role == "student"].groupby("person_id")["session_id"].nunique()
     if len(freq):
-        fig = px.histogram(freq, x="aulas", color_discrete_sequence=[ORANGE],
-                           title="Frequência: aulas assistidas por aluno", labels={"aulas": "Aulas no período"})
-        c2.plotly_chart(style(fig).update_yaxes(title="Alunos"), width="stretch")
+        faixas = ["1 aula", "2 a 4", "5 a 9", "10 a 19", "20 ou mais"]
+        fx = pd.cut(freq, [0, 1, 4, 9, 19, float("inf")], labels=faixas).value_counts().reindex(faixas)
+        fx = fx.rename("Alunos").rename_axis("faixa").reset_index()
+        fx["pct"] = fx["Alunos"] / fx["Alunos"].sum() * 100
+        fig = px.bar(fx, x="faixa", y="Alunos", color_discrete_sequence=[ORANGE], text=fx["pct"].map("{:.0f}%".format),
+                     title="Quantas aulas cada aluno assistiu no período", labels={"faixa": "Aulas assistidas"})
+        fig.update_traces(textposition="outside", cliponaxis=False,
+                          hovertemplate="%{y} alunos assistiram %{x}<extra></extra>")
+        c2.plotly_chart(style(fig), width="stretch")
+        c2.caption(
+            f"Cada barra conta **alunos**. Ex.: {fx.loc[0, 'Alunos']} alunos ({fx.loc[0, 'pct']:.0f}%) aparecem em só 1 aula "
+            f"(aula experimental, reposição ou nome digitado de outro jeito); {fx.iloc[-1]['Alunos']} alunos são assíduos, "
+            f"com 20 aulas ou mais. Mediana: {freq.median():.0f} aulas por aluno."
+        )
 
     st.subheader("Professores (pseudonimizados)")
-    st.caption("Grupos com menos de 5 aulas não são exibidos individualmente (proteção contra reidentificação).")
-    carga = (pp[pp.role == "teacher"].groupby("person_id")
-               .agg(aulas=("session_id", "nunique"), permanencia_mediana_pct=("pct_aula", "median"))
-               .query("aulas >= 5").sort_values("aulas", ascending=False).round(1))
-    st.dataframe(carga, width="stretch")
+    st.caption(
+        "Uma linha por professor, ordenada por número de aulas. Professores com menos de 5 aulas "
+        "não aparecem (proteção contra reidentificação)."
+    )
+    t_pp = pp[pp.role == "teacher"].merge(s[["session_id", "n_students"]], on="session_id")
+    alunos_prof = (t_pp[["person_id", "session_id"]]
+                   .merge(pp[pp.role == "student"][["session_id", "person_id"]].rename(columns={"person_id": "aluno"}),
+                          on="session_id")
+                   .groupby("person_id")["aluno"].nunique())
+    carga = (t_pp.groupby("person_id")
+               .agg(aulas=("session_id", "nunique"), horas=("duration_min", "sum"),
+                    duracao=("duration_min", "median"), alunos_aula=("n_students", "mean"))
+               .join(alunos_prof.rename("alunos"))
+               .query("aulas >= 5").sort_values("aulas", ascending=False))
+    carga["horas"] = carga["horas"] / 60
+    carga = carga.reset_index().rename(columns={
+        "person_id": "Professor", "aulas": "Aulas dadas", "horas": "Horas de aula",
+        "duracao": "Duração típica (min)", "alunos_aula": "Alunos por aula (média)", "alunos": "Alunos diferentes atendidos"})
+    st.dataframe(carga.round(1), hide_index=True, width="stretch")
 
 # ----------------------------------------------------------------------------- aba 4
 with tab4:
