@@ -12,7 +12,7 @@ Este projeto analisa **3 meses de aulas online reais** de uma escola de inglês.
 | **Tecnologias** | Python, Requests, Pandas, NumPy, Matplotlib, Seaborn, Plotly, Streamlit, SQLite, Parquet |
 
 **Onde ver cada parte:**
-- 📊 **Dashboard:** [`dashboard/app.py`](dashboard/app.py). Para rodar, veja [Como executar](#como-executar).
+- 📊 **Dashboard online:** **https://whereby-analytics.streamlit.app/** (código em [`dashboard/app.py`](dashboard/app.py))
 - 📓 **Análise exploratória**, com código, gráficos e conclusões: [`notebooks/02_analise_exploratoria.ipynb`](notebooks/02_analise_exploratoria.ipynb). O GitHub mostra o notebook já executado.
 - 🗂️ **Dataset anonimizado:** [`data/public/`](data/public), em CSV e Parquet.
 - 📄 **Relatório de viabilidade técnica:** [`docs/01_relatorio_viabilidade.md`](docs/01_relatorio_viabilidade.md).
@@ -59,6 +59,8 @@ Este projeto analisa **3 meses de aulas online reais** de uma escola de inglês.
 ---
 
 ## Dashboard
+
+**Acesse em: https://whereby-analytics.streamlit.app/**
 
 O dashboard tem filtros por período, dia da semana, turno e sala, e é organizado em 4 abas. No topo ficam 6 indicadores: aulas realizadas, duração mediana, participantes por aula, horas de aula, alunos distintos e % de aulas com menos de 10 min.
 
@@ -150,7 +152,7 @@ Contém o número de aulas, o primeiro e o último mês com aulas, a duração m
 
 ## Como executar
 
-Não é preciso ter acesso à API: o dashboard e o notebook usam apenas os arquivos de `data/public/`.
+Para só ver o dashboard, basta abrir o [link online](https://whereby-analytics.streamlit.app/). Para rodar localmente, não é preciso ter acesso à API: o dashboard e o notebook usam apenas os arquivos de `data/public/`.
 
 ```bash
 git clone https://github.com/claudiomvpereira/whereby-analytics.git
