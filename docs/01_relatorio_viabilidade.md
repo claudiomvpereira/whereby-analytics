@@ -79,6 +79,8 @@ São configurados no painel (*Configure → Webhooks*) e assinados com HMAC-SHA2
   - os horários vão para o fuso de São Paulo, arredondados para a hora cheia;
   - a data é trocada por ano-semana, mais o dia da semana;
   - as durações são mantidas em minutos inteiros.
+
+  > **Atualização (implementação):** o período foi reduzido para os últimos 3 meses (desde 17/08/2026). A tabela de sessões mantém a data e a hora cheia, porque a análise de volume diário pede isso. A proteção vem de remover o nome da sala e trocar as pessoas por pseudônimos. As participações não têm horário absoluto, só minutos relativos ao início da aula, e as durações têm uma casa decimal.
 - Grupos com menos de 5 sessões ficam fora dos gráficos por pessoa (supressão de células pequenas).
 
 ## 8. Arquitetura e modelo de dados

@@ -2,14 +2,15 @@
 
 Projeto acadêmico (disciplina **Big Data em Python**). Ele coleta, anonimiza, trata, analisa e visualiza dados reais de videoconferências obtidos pela API REST do Whereby Embedded.
 
-> **Status:** etapas 1–3 em andamento — viabilidade concluída, coleta dos últimos 6 meses em execução, anonimização e limpeza implementadas e testadas com dados sintéticos.
+> **Status:** coleta concluída (17/08/2026 a 17/11/2026: 1.783 sessões e 13.517 participações brutas). Falta gerar os dados públicos finais com o segredo definitivo de pseudonimização.
 
 ## Privacidade
 
 - Nenhum nome, e-mail, ID original da API ou link de reunião é publicado.
 - Participantes são pseudonimizados com HMAC-SHA256 (`Teacher 001`, `Student 001`). O segredo fica numa variável de ambiente.
 - Dados brutos e a tabela de correspondência ficam em `data/raw/` e `data/private/`, ambos fora do Git.
-- Datas e horários são generalizados nos datasets públicos (ano-semana, hora cheia).
+- Datas e horários são generalizados nos datasets públicos: data e hora cheia da sessão (fuso de São Paulo). As participações não têm horário absoluto, só minutos relativos ao início da aula.
+- Estatísticas por pessoa só aparecem para quem tem 5 ou mais aulas.
 
 ## Estrutura
 
@@ -48,5 +49,12 @@ python -m pytest -q tests                                     # testes
 ```
 
 Sem acesso à API, use diretamente os arquivos de `data/public/`.
+
+### Notebook e dashboard
+
+```bash
+jupyter notebook notebooks/02_analise_exploratoria.ipynb   # análise exploratória
+streamlit run dashboard/app.py                              # dashboard interativo
+```
 
 Veja [`docs/01_relatorio_viabilidade.md`](docs/01_relatorio_viabilidade.md).
