@@ -40,13 +40,18 @@ def load():
     return s, p, q
 
 
+# Sem a barra de ferramentas do Plotly (zoom, pan etc.): o zoom por arrastar confundia mais do que ajudava.
+# Para ampliar um gráfico, use o botão de tela cheia do próprio Streamlit (canto do gráfico).
+CHART_CONFIG = {"displayModeBar": False, "scrollZoom": False, "doubleClick": False}
+
+
 def style(fig: go.Figure, height=320) -> go.Figure:
     fig.update_layout(
         template="plotly_white", height=height, margin=dict(l=10, r=10, t=40, b=10),
         font=dict(color=MUTED), title_font=dict(size=15, color="#0b0b0b"),
         legend=dict(orientation="h", yanchor="top", y=-0.12, x=0, title=None),
         hoverlabel=dict(bgcolor="white", bordercolor=GRID, font=dict(color="#0b0b0b", size=13)),
-        paper_bgcolor="white", plot_bgcolor="white", bargap=0.15,
+        paper_bgcolor="white", plot_bgcolor="white", bargap=0.15, dragmode=False,
     )
     fig.update_xaxes(showgrid=False, linecolor=GRID)
     fig.update_yaxes(gridcolor=GRID, zeroline=False)
@@ -110,13 +115,13 @@ with tab1:
     fig = px.bar(semanal, x="date", y="Aulas", title="Aulas por semana", color_discrete_sequence=[BLUE])
     fig.update_traces(hovertemplate="Semana de %{x|%d/%m}<br>%{y} aulas<extra></extra>")
     fig.update_xaxes(title=None, tickformat="%d/%m")
-    c1.plotly_chart(style(fig), width="stretch")
+    c1.plotly_chart(style(fig), width="stretch", config=CHART_CONFIG)
 
     diario = s.groupby("dia", observed=False).size().rename("Aulas").reset_index()
     fig = px.bar(diario, x="dia", y="Aulas", title="Aulas por dia da semana", color_discrete_sequence=[BLUE])
     fig.update_traces(hovertemplate="%{x}: %{y} aulas<extra></extra>")
     fig.update_xaxes(title=None)
-    c2.plotly_chart(style(fig), width="stretch")
+    c2.plotly_chart(style(fig), width="stretch", config=CHART_CONFIG)
 
     heat = s.pivot_table(index="dia", columns="start_hour", values="session_id", aggfunc="count", observed=False).fillna(0)
     heat = heat.reindex(columns=range(int(s_all.start_hour.min()), int(s_all.start_hour.max()) + 1), fill_value=0)
@@ -126,7 +131,7 @@ with tab1:
         hovertemplate="%{y}, %{x}: %{z:.0f} aulas<extra></extra>",
     ))
     fig.update_yaxes(autorange="reversed")
-    st.plotly_chart(style(fig.update_layout(title="Mapa de calor: dia × hora de início"), 340), width="stretch")
+    st.plotly_chart(style(fig.update_layout(title="Mapa de calor: dia × hora de início"), 340), width="stretch", config=CHART_CONFIG)
 
 # ----------------------------------------------------------------------------- aba 2
 def barras_faixas(valores, cortes, nomes, cor, titulo, eixo, unidade, hover):
@@ -153,7 +158,7 @@ with tab2:
                       hovertemplate="Aulas com cerca de %{x:.0f} min: %{y}<extra></extra>")
     fig.add_vline(med, line_dash="dash", line_color="#0b0b0b",
                   annotation_text=f"metade das aulas dura até {med:.0f} min", annotation_position="top right")
-    c1.plotly_chart(style(fig).update_yaxes(title="Número de aulas"), width="stretch")
+    c1.plotly_chart(style(fig).update_yaxes(title="Número de aulas"), width="stretch", config=CHART_CONFIG)
     c1.caption(
         "Cada barra conta quantas aulas tiveram aquela duração. O pico perto de **50 min** é a aula padrão; "
         "o grupo perto de **30 min** parece outro formato de aula; as barras perto de **0** são aulas que "
@@ -185,7 +190,7 @@ with tab2:
                                          "<span style='color:#52514e'>%{customdata[2]} de %{customdata[3]} presenças</span>"
                                          "<extra></extra>"))
         fig.update_xaxes(range=[0, 100], ticksuffix="%", title=None)
-        c2.plotly_chart(style(fig).update_layout(legend=dict(y=-0.1)), width="stretch")
+        c2.plotly_chart(style(fig).update_layout(legend=dict(y=-0.1)), width="stretch", config=CHART_CONFIG)
         al_toda = (pp.loc[pp.role == "student", "pct_aula"] >= 90).mean()
         c2.caption(
             f"Para cada aluno em cada aula, comparamos o tempo na sala com a duração da aula. "
@@ -203,7 +208,7 @@ with tab2:
         ["Adiantada", "No horário<br>(±2 min)", "2 a 5 min<br>depois", "5 a 10 min<br>depois", "Mais de 10<br>min depois"],
         BLUE, "As aulas começaram no horário?", "Início em relação ao horário cheio ou meia hora", "Aulas",
         "%{x}: %{y} aulas (%{customdata:.0f}%)")
-    c1.plotly_chart(fig, width="stretch")
+    c1.plotly_chart(fig, width="stretch", config=CHART_CONFIG)
     c1.caption(
         "A API não informa o horário agendado. Por isso usamos a grade da escola: as aulas são marcadas em "
         f"horários cheios ou de meia hora (19h00, 19h30…). **{df.loc[1, 'pct']:.0f}% começaram no horário.** "
@@ -219,7 +224,7 @@ with tab2:
             ["Antes ou<br>junto", "Até 2 min<br>depois", "2 a 5 min<br>depois", "5 a 10 min<br>depois", "Mais de 10<br>min depois"],
             ORANGE, "Os alunos chegaram depois do professor?", "Entrada do aluno em relação ao professor",
             "Presenças de alunos", "%{x}: %{y} presenças (%{customdata:.0f}%)")
-        c2.plotly_chart(fig, width="stretch")
+        c2.plotly_chart(fig, width="stretch", config=CHART_CONFIG)
         c2.caption(
             "Compara o momento em que cada aluno entrou com o momento em que o professor entrou na mesma aula. "
             f"**{df.loc[0, 'pct'] + df.loc[1, 'pct']:.0f}% dos alunos chegaram antes do professor ou até 2 min depois.**"
@@ -232,7 +237,7 @@ with tab3:
     fig = px.bar(cont, x="api_unique_participants", y="Aulas", color_discrete_sequence=[BLUE],
                  title="Participantes únicos por aula", labels={"api_unique_participants": "Participantes"})
     fig.update_traces(hovertemplate="%{x} participantes: %{y} aulas<extra></extra>")
-    c1.plotly_chart(style(fig), width="stretch")
+    c1.plotly_chart(style(fig), width="stretch", config=CHART_CONFIG)
 
     freq = pp[pp.person_id.str.startswith("Student")].groupby("person_id")["session_id"].nunique()
     if len(freq):
@@ -244,7 +249,7 @@ with tab3:
                      title="Quantas aulas cada aluno assistiu no período", labels={"faixa": "Aulas assistidas"})
         fig.update_traces(textposition="outside", cliponaxis=False,
                           hovertemplate="%{y} alunos assistiram %{x}<extra></extra>")
-        c2.plotly_chart(style(fig), width="stretch")
+        c2.plotly_chart(style(fig), width="stretch", config=CHART_CONFIG)
         c2.caption(
             f"Cada barra conta **alunos**. Ex.: {fx.loc[0, 'Alunos']} alunos ({fx.loc[0, 'pct']:.0f}%) aparecem em só 1 aula "
             f"(aula experimental, reposição ou nome digitado de outro jeito); {fx.iloc[-1]['Alunos']} alunos são assíduos, "
@@ -315,7 +320,7 @@ with tab4:
     fig.update_layout(title="Duração de cada aula ao longo do período", hovermode="closest")
     fig.update_xaxes(tickformat="%d/%m")
     fig.update_yaxes(title="Duração (min)")
-    c1.plotly_chart(style(fig, 400), width="stretch")
+    c1.plotly_chart(style(fig, 400), width="stretch", config=CHART_CONFIG)
 
     resumo = pd.DataFrame({
         "Critério": ["Muito curtas (< 10 min)", "Fora da faixa normal (IQR)", "Só 1 participante",
