@@ -10,6 +10,7 @@ import json
 import os
 from pathlib import Path
 
+import numpy as np
 import pandas as pd
 import plotly.express as px
 import plotly.graph_objects as go
@@ -44,7 +45,8 @@ def style(fig: go.Figure, height=320) -> go.Figure:
         template="plotly_white", height=height, margin=dict(l=10, r=10, t=40, b=10),
         font=dict(color=MUTED), title_font=dict(size=15, color="#0b0b0b"),
         legend=dict(orientation="h", yanchor="top", y=-0.12, x=0, title=None),
-        hoverlabel=dict(bgcolor="white"), bargap=0.15,
+        hoverlabel=dict(bgcolor="white", bordercolor=GRID, font=dict(color="#0b0b0b", size=13)),
+        paper_bgcolor="white", plot_bgcolor="white", bargap=0.15,
     )
     fig.update_xaxes(showgrid=False, linecolor=GRID)
     fig.update_yaxes(gridcolor=GRID, zeroline=False)
@@ -188,26 +190,61 @@ with tab3:
 with tab4:
     q1, q3 = s["duration_min"].quantile([0.25, 0.75])
     iqr = q3 - q1
-    s["atipica_duracao"] = ~s["duration_min"].between(q1 - 1.5 * iqr, q3 + 1.5 * iqr)
-    c1, c2 = st.columns([1.4, 1])
-    fig = px.scatter(s, x="date", y="duration_min", color=s["atipica_duracao"].map({True: "Atípica (IQR)", False: "Esperada"}),
-                     color_discrete_map={"Esperada": BLUE, "Atípica (IQR)": ORANGE}, opacity=0.6,
-                     title="Duração de cada aula (atípicas pelo critério IQR)",
-                     labels={"date": "", "duration_min": "Duração (min)"},
-                     hover_data={"session_id": True, "room_id": True, "date": "|%d/%m/%Y"})
-    fig.update_traces(marker=dict(size=7, line=dict(width=1, color="white")))
-    c1.plotly_chart(style(fig, 360), width="stretch")
+    lo, hi = max(q1 - 1.5 * iqr, 0), q3 + 1.5 * iqr
+    s["atipica_duracao"] = ~s["duration_min"].between(lo, hi)
+    s["situacao"] = np.select(
+        [s["is_short"], s["duration_min"] < lo, s["duration_min"] > hi],
+        ["Muito curta (< 10 min)", "Mais curta que o normal", "Mais longa que o normal"],
+        "Dentro do esperado",
+    )
+
+    st.markdown(
+        f"Cada ponto é **uma aula**. A faixa azul-clara mostra a duração considerada normal "
+        f"(**{lo:.0f} a {hi:.0f} min**, calculada pelo critério estatístico IQR). "
+        "Pontos fora da faixa são aulas atípicas. Passe o mouse sobre um ponto para ver os detalhes."
+    )
+    c1, c2 = st.columns([1.5, 1])
+    cores = {"Dentro do esperado": "#9ec5f4", "Mais curta que o normal": ORANGE,
+             "Mais longa que o normal": "#184f95", "Muito curta (< 10 min)": "#b3261e"}
+    fig = go.Figure()
+    fig.add_hrect(y0=lo, y1=hi, fillcolor="#cde2fb", opacity=0.45, line_width=0, layer="below")
+    for nome, cor in cores.items():
+        d = s[s["situacao"] == nome]
+        if d.empty:
+            continue
+        fig.add_trace(go.Scatter(
+            x=d["date"], y=d["duration_min"], mode="markers", name=f"{nome} ({len(d)})",
+            marker=dict(size=8 if nome != "Dentro do esperado" else 6, color=cor,
+                        line=dict(width=1, color="white")),
+            customdata=np.stack([d["session_id"], d["room_id"], d["dia"].astype(str),
+                                 d["start_hour"], d["api_unique_participants"]], axis=1),
+            hovertemplate=(
+                "<b>%{customdata[0]}</b> · %{customdata[1]}<br>"
+                "%{x|%d/%m/%Y} (%{customdata[2]}), às %{customdata[3]}h<br>"
+                "Duração: <b>%{y:.0f} min</b><br>"
+                "Participantes: %{customdata[4]}<br>"
+                f"<i>{nome}</i><extra></extra>"
+            ),
+        ))
+    fig.update_layout(title="Duração de cada aula ao longo do período", hovermode="closest")
+    fig.update_xaxes(tickformat="%d/%m")
+    fig.update_yaxes(title="Duração (min)")
+    c1.plotly_chart(style(fig, 400), width="stretch")
 
     resumo = pd.DataFrame({
-        "Critério": ["Muito curtas (< 10 min)", "Duração atípica (IQR)", "Apenas 1 participante",
+        "Critério": ["Muito curtas (< 10 min)", "Fora da faixa normal (IQR)", "Só 1 participante",
                      "Conexões que são reconexões"],
-        "Valor": [f"{s['is_short'].sum()} ({s['is_short'].mean():.1%})",
+        "Aulas": [f"{s['is_short'].sum()} ({s['is_short'].mean():.1%})",
                   f"{s['atipica_duracao'].sum()} ({s['atipica_duracao'].mean():.1%})",
                   f"{(s['api_unique_participants'] <= 1).sum()}",
                   f"{p['is_reconnection'].mean():.1%}" if len(p) else "—"],
+        "O que pode indicar": ["queda de conexão, teste ou aluno ausente",
+                               f"aula fora de {lo:.0f}–{hi:.0f} min; o grupo de ~30 min parece outro formato de aula",
+                               "professor esperou e ninguém entrou",
+                               "internet instável (a pessoa saiu e voltou)"],
     })
-    c2.subheader("Aulas atípicas")
-    c2.dataframe(resumo, hide_index=True, width="stretch")
+    st.subheader("Resumo das aulas atípicas")
+    st.dataframe(resumo, hide_index=True, width="stretch")
     c2.subheader("Tratamento dos dados")
     inc = quality.get("inconsistencies", {})
     c2.dataframe(pd.DataFrame({
@@ -219,7 +256,12 @@ with tab4:
                       inc.get("participations_without_left_imputed", 0), inc.get("participations_left_before_join", 0)],
     }), hide_index=True, width="stretch")
 
-    with st.expander("Ver aulas atípicas (tabela)"):
-        cols = ["session_id", "room_id", "date", "weekday", "start_hour", "duration_min", "api_unique_participants"]
-        st.dataframe(s.loc[s["atipica_duracao"] | s["is_short"], cols].sort_values("date"),
-                     hide_index=True, width="stretch")
+    with st.expander("Ver lista das aulas atípicas"):
+        tab = s.loc[s["situacao"] != "Dentro do esperado",
+                    ["session_id", "room_id", "date", "dia", "start_hour", "duration_min", "api_unique_participants", "situacao"]]
+        tab = tab.sort_values("date").assign(date=lambda d: d["date"].dt.strftime("%d/%m/%Y"),
+                                             dia=lambda d: d["dia"].astype(str))
+        st.dataframe(tab.rename(columns={
+            "session_id": "Aula", "room_id": "Sala", "date": "Data", "dia": "Dia", "start_hour": "Hora",
+            "duration_min": "Duração (min)", "api_unique_participants": "Participantes", "situacao": "Situação"}),
+            hide_index=True, width="stretch")
