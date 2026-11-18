@@ -98,7 +98,7 @@ k[0].metric("Aulas realizadas", f"{len(s):,}".replace(",", "."))
 k[1].metric("Duração mediana", f"{s['duration_min'].median():.0f} min")
 k[2].metric("Participantes por aula", f"{s['api_unique_participants'].mean():.1f}")
 k[3].metric("Horas de aula", f"{s['duration_min'].sum() / 60:,.0f} h".replace(",", "."))
-k[4].metric("Alunos distintos", f"{pp.loc[pp.role == 'student', 'person_id'].nunique():,}".replace(",", "."))
+k[4].metric("Alunos distintos", f"{pp.loc[pp.person_id.str.startswith('Student'), 'person_id'].nunique():,}".replace(",", "."))
 k[5].metric("Aulas < 10 min", f"{s['is_short'].mean():.1%}", help="Possíveis quedas, testes ou ausências")
 
 tab1, tab2, tab3, tab4 = st.tabs(["📅 Volume e horários", "⏱️ Duração e permanência", "👥 Participação", "⚠️ Qualidade e atípicas"])
@@ -234,7 +234,7 @@ with tab3:
     fig.update_traces(hovertemplate="%{x} participantes: %{y} aulas<extra></extra>")
     c1.plotly_chart(style(fig), width="stretch")
 
-    freq = pp[pp.role == "student"].groupby("person_id")["session_id"].nunique()
+    freq = pp[pp.person_id.str.startswith("Student")].groupby("person_id")["session_id"].nunique()
     if len(freq):
         faixas = ["1 aula", "2 a 4", "5 a 9", "10 a 19", "20 ou mais"]
         fx = pd.cut(freq, [0, 1, 4, 9, 19, float("inf")], labels=faixas).value_counts().reindex(faixas)

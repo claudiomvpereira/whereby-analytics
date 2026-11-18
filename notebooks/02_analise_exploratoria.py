@@ -69,7 +69,7 @@ quality = json.loads((PUBLIC / "quality_report.json").read_text())
 
 s["date"] = pd.to_datetime(s["date"])
 s["dia"] = pd.Categorical(s["weekday"].map(DIAS), ORDEM_DIAS, ordered=True)
-print(f"Sessões: {len(s):,} | Participações (conexões): {len(p):,} | Salas: {len(rooms)}")
+print(f"Sessões: {len(s):_} | Participações (conexões): {len(p):_} | Salas: {len(rooms)}".replace("_", "."))
 print(f"Período: {s['date'].min():%d/%m/%Y} a {s['date'].max():%d/%m/%Y}")
 s.head()
 
@@ -291,7 +291,7 @@ print("Reconexões: ", f"{p['is_reconnection'].mean():.1%} das conexões são re
 # pois a API não fornece um identificador estável de usuário.
 
 # %%
-freq = pp[pp.role == "student"].groupby("person_id")["session_id"].nunique()
+freq = pp[pp.person_id.str.startswith("Student")].groupby("person_id")["session_id"].nunique()
 semanas = s["date"].dt.to_period("W").nunique()
 print(f"Alunos distintos: {freq.size} | aulas por aluno: média {freq.mean():.1f}, mediana {freq.median():.0f}")
 fig, ax = plt.subplots(figsize=(8, 3.4))
@@ -311,8 +311,9 @@ prof_carga.head(10).to_frame("Aulas ministradas")
 # %%
 dia_top = s["dia"].value_counts().idxmax()
 h1, h2 = s["start_hour"].value_counts().index[:2]
+n_aulas = f"{len(s):,}".replace(",", ".")
 concl = [
-    f"**Volume:** {len(s):,} aulas em {semanas} semanas ({por_semana.iloc[1:-1].mean():.0f} por semana completa), "
+    f"**Volume:** {n_aulas} aulas em {semanas} semanas ({por_semana.iloc[1:-1].mean():.0f} por semana completa), "
     f"concentradas de segunda a sexta ({1 - s['dia'].isin(['Sáb', 'Dom']).mean():.0%}); {dia_top} é o dia mais movimentado.",
     f"**Duração:** padrão muito estável — mediana de {d.median():.0f} min e 50% das aulas entre {q1:.0f} e {q3:.0f} min, "
     f"compatível com aulas de ~50 min.",
