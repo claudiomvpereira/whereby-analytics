@@ -129,40 +129,90 @@ with tab1:
     st.plotly_chart(style(fig.update_layout(title="Mapa de calor: dia × hora de início"), 340), width="stretch")
 
 # ----------------------------------------------------------------------------- aba 2
+def barras_faixas(valores, cortes, nomes, cor, titulo, eixo, unidade, hover):
+    """Barra simples por faixas, com a % em cima de cada barra."""
+    cont = pd.cut(valores, cortes, labels=nomes).value_counts().reindex(nomes).fillna(0).astype(int)
+    df = cont.rename("n").rename_axis("faixa").reset_index()
+    df["pct"] = df["n"] / max(df["n"].sum(), 1) * 100
+    fig = px.bar(df, x="faixa", y="n", text=df["pct"].map("{:.0f}%".format), color_discrete_sequence=[cor],
+                 title=titulo, labels={"faixa": eixo, "n": unidade})
+    fig.update_traces(textposition="outside", cliponaxis=False, customdata=df["pct"],
+                      hovertemplate=hover + "<extra></extra>")
+    fig.update_xaxes(tickangle=0)
+    return style(fig, 340), df
+
+
 with tab2:
     c1, c2 = st.columns(2)
-    fig = px.histogram(s, x="duration_min", nbins=40, title="Distribuição da duração das aulas",
-                       color_discrete_sequence=[BLUE], labels={"duration_min": "Duração (min)"})
-    fig.add_vline(s["duration_min"].median(), line_dash="dash", line_color="#0b0b0b",
-                  annotation_text=f"mediana {s['duration_min'].median():.0f} min")
-    fig.update_traces(hovertemplate="%{x} min: %{y} aulas<extra></extra>")
-    c1.plotly_chart(style(fig).update_yaxes(title="Aulas"), width="stretch")
 
+    # 1) duração
+    med = s["duration_min"].median()
+    fig = px.histogram(s, x="duration_min", color_discrete_sequence=[BLUE], title="Quanto tempo as aulas duraram",
+                       labels={"duration_min": "Duração da aula (min)"})
+    fig.update_traces(xbins=dict(start=0, end=max(100, s["duration_min"].max()) + 2, size=2),
+                      hovertemplate="Aulas com cerca de %{x:.0f} min: %{y}<extra></extra>")
+    fig.add_vline(med, line_dash="dash", line_color="#0b0b0b",
+                  annotation_text=f"metade das aulas dura até {med:.0f} min", annotation_position="top right")
+    c1.plotly_chart(style(fig).update_yaxes(title="Número de aulas"), width="stretch")
+    c1.caption(
+        "Cada barra conta quantas aulas tiveram aquela duração. O pico perto de **50 min** é a aula padrão; "
+        "o grupo perto de **30 min** parece outro formato de aula; as barras perto de **0** são aulas que "
+        "caíram ou foram abertas e fechadas logo em seguida."
+    )
+
+    # 2) permanência
     if len(pp):
-        fig = px.box(pp, x="papel", y="pct_aula", color="papel", points=False,
-                     color_discrete_map={"Professor": BLUE, "Aluno": ORANGE},
-                     title="Permanência (% da duração da aula)", labels={"pct_aula": "% da aula", "papel": ""})
-        c2.plotly_chart(style(fig).update_layout(showlegend=False), width="stretch")
+        nomes = ["Menos da metade", "Metade a 90%", "Aula toda (90% ou mais)"]
+        perm = (pp.assign(faixa=pd.cut(pp["pct_aula"], [-1, 50, 90, 101], labels=nomes))
+                  .groupby(["papel", "faixa"], observed=False).size().rename("n").reset_index())
+        perm["pct"] = perm["n"] / perm.groupby("papel")["n"].transform("sum") * 100
+        fig = px.bar(perm, y="papel", x="pct", color="faixa", orientation="h",
+                     color_discrete_map=dict(zip(nomes, ["#9ec5f4", "#3987e5", "#184f95"])),
+                     category_orders={"faixa": nomes, "papel": ["Aluno", "Professor"]},
+                     text=perm["pct"].map(lambda v: f"{v:.0f}%" if v >= 5 else ""),
+                     title="Quanto da aula cada pessoa ficou na sala", labels={"papel": "", "pct": "% das presenças"})
+        fig.update_traces(textposition="inside", insidetextanchor="middle", marker_line=dict(width=2, color="white"),
+                          hovertemplate="%{y}: %{x:.0f}% ficaram %{fullData.name}<extra></extra>")
+        fig.update_xaxes(range=[0, 100], ticksuffix="%", title=None)
+        c2.plotly_chart(style(fig).update_layout(legend=dict(y=-0.1)), width="stretch")
+        al_toda = (pp.loc[pp.role == "student", "pct_aula"] >= 90).mean()
+        c2.caption(
+            f"Para cada aluno em cada aula, comparamos o tempo na sala com a duração da aula. "
+            f"**{al_toda:.0%} dos alunos ficaram praticamente a aula toda.** Os professores quase sempre ficam 100%."
+        )
     else:
         c2.info("Sem dados de participantes para o filtro selecionado.")
 
+    st.divider()
     c1, c2 = st.columns(2)
-    fig = px.histogram(s, x="slot_offset_min", nbins=30, color_discrete_sequence=[BLUE],
-                       title="Início real vs. horário da grade (:00/:30)",
-                       labels={"slot_offset_min": "Minutos após o horário cheio/meia hora"})
-    fig.add_vline(0, line_color="#0b0b0b")
-    c1.plotly_chart(style(fig).update_yaxes(title="Aulas"), width="stretch")
-    c1.caption("Aproximação de *previsto × realizado*: a API não informa o horário agendado.")
 
+    # 3) pontualidade da aula (proxy de previsto x realizado)
+    fig, df = barras_faixas(
+        s["slot_offset_min"], [-31, -2, 2, 5, 10, 31],
+        ["Adiantada", "No horário<br>(±2 min)", "2 a 5 min<br>depois", "5 a 10 min<br>depois", "Mais de 10<br>min depois"],
+        BLUE, "As aulas começaram no horário?", "Início em relação ao horário cheio ou meia hora", "Aulas",
+        "%{x}: %{y} aulas (%{customdata:.0f}%)")
+    c1.plotly_chart(fig, width="stretch")
+    c1.caption(
+        "A API não informa o horário agendado. Por isso usamos a grade da escola: as aulas são marcadas em "
+        f"horários cheios ou de meia hora (19h00, 19h30…). **{df.loc[1, 'pct']:.0f}% começaram no horário.** "
+        "Ex.: uma aula que começou às 19h04 entra em \"2 a 5 min depois\"."
+    )
+
+    # 4) entrada do aluno x professor
     prof = pp[pp.role == "teacher"].groupby("session_id")["first_join"].min().rename("prof")
     al = pp[pp.role == "student"].join(prof, on="session_id").dropna(subset=["prof"])
     if len(al):
-        al["atraso"] = (al["first_join"] - al["prof"]).clip(-15, 30)
-        fig = px.histogram(al, x="atraso", nbins=45, color_discrete_sequence=[ORANGE],
-                           title="Entrada do aluno em relação ao professor",
-                           labels={"atraso": "Minutos (negativo = antes do professor)"})
-        fig.add_vline(0, line_color="#0b0b0b")
-        c2.plotly_chart(style(fig).update_yaxes(title="Alunos-aula"), width="stretch")
+        fig, df = barras_faixas(
+            al["first_join"] - al["prof"], [-1e9, 0, 2, 5, 10, 1e9],
+            ["Antes ou<br>junto", "Até 2 min<br>depois", "2 a 5 min<br>depois", "5 a 10 min<br>depois", "Mais de 10<br>min depois"],
+            ORANGE, "Os alunos chegaram depois do professor?", "Entrada do aluno em relação ao professor",
+            "Presenças de alunos", "%{x}: %{y} presenças (%{customdata:.0f}%)")
+        c2.plotly_chart(fig, width="stretch")
+        c2.caption(
+            "Compara o momento em que cada aluno entrou com o momento em que o professor entrou na mesma aula. "
+            f"**{df.loc[0, 'pct'] + df.loc[1, 'pct']:.0f}% dos alunos chegaram antes do professor ou até 2 min depois.**"
+        )
 
 # ----------------------------------------------------------------------------- aba 3
 with tab3:
