@@ -166,13 +166,24 @@ with tab2:
         perm = (pp.assign(faixa=pd.cut(pp["pct_aula"], [-1, 50, 90, 101], labels=nomes))
                   .groupby(["papel", "faixa"], observed=False).size().rename("n").reset_index())
         perm["pct"] = perm["n"] / perm.groupby("papel")["n"].transform("sum") * 100
+        perm["quem"] = perm["papel"].map({"Aluno": "alunos", "Professor": "professores"})
+        perm["frase"] = perm["faixa"].map(dict(zip(nomes, [
+            "ficaram <b>menos da metade</b> da aula",
+            "ficaram <b>entre metade e 90%</b> da aula",
+            "ficaram <b>praticamente a aula toda</b> (90% ou mais)"]))).astype(str)
+        fmt = lambda v: f"{v:,}".replace(",", ".")
+        perm["n_txt"] = perm["n"].map(fmt)
+        perm["total_txt"] = perm.groupby("papel")["n"].transform("sum").map(fmt)
         fig = px.bar(perm, y="papel", x="pct", color="faixa", orientation="h",
                      color_discrete_map=dict(zip(nomes, ["#9ec5f4", "#3987e5", "#184f95"])),
                      category_orders={"faixa": nomes, "papel": ["Aluno", "Professor"]},
                      text=perm["pct"].map(lambda v: f"{v:.0f}%" if v >= 5 else ""),
-                     title="Quanto da aula cada pessoa ficou na sala", labels={"papel": "", "pct": "% das presenças"})
+                     title="Quanto da aula cada pessoa ficou na sala", labels={"papel": "", "pct": "% das presenças"},
+                     custom_data=["quem", "frase", "n_txt", "total_txt"])
         fig.update_traces(textposition="inside", insidetextanchor="middle", marker_line=dict(width=2, color="white"),
-                          hovertemplate="%{y}: %{x:.0f}% ficaram %{fullData.name}<extra></extra>")
+                          hovertemplate=("<b>%{x:.0f}% dos %{customdata[0]}</b><br>%{customdata[1]}<br>"
+                                         "<span style='color:#52514e'>%{customdata[2]} de %{customdata[3]} presenças</span>"
+                                         "<extra></extra>"))
         fig.update_xaxes(range=[0, 100], ticksuffix="%", title=None)
         c2.plotly_chart(style(fig).update_layout(legend=dict(y=-0.1)), width="stretch")
         al_toda = (pp.loc[pp.role == "student", "pct_aula"] >= 90).mean()
